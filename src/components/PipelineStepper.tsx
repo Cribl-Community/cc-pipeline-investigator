@@ -46,24 +46,6 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
     setLoading(false);
   }, [activeFunctions, editedFunctions, activeToAllIdx, groupId, pipeline.id, sampleId, sampleEvents]);
 
-  const runNextStep = useCallback(async () => {
-    const nextIdx = stepResults.length;
-    if (nextIdx >= activeFunctions.length) return;
-
-    setLoading(true);
-    setError(null);
-    const allIdx = activeToAllIdx[nextIdx];
-
-    try {
-      const result = await previewPipeline(groupId, pipeline.id, sampleId, sampleEvents, editedFunctions, allIdx);
-      setStepResults(prev => [...prev, { stepIndex: nextIdx, events: result.events, droppedEvents: result.droppedEvents }]);
-    } catch (err) {
-      setStepResults(prev => [...prev, { stepIndex: nextIdx, events: [], droppedEvents: [], error: String(err) }]);
-    }
-
-    setCurrentStep(nextIdx);
-    setLoading(false);
-  }, [activeFunctions, editedFunctions, activeToAllIdx, stepResults, groupId, pipeline.id, sampleId, sampleEvents]);
 
   const runCurrentStep = useCallback(async () => {
     if (currentStep < 0 || currentStep >= activeFunctions.length) return;

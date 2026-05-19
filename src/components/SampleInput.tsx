@@ -120,7 +120,7 @@ export function SampleInput({ groupId, onSampleReady }: Props) {
                 >
                   {sampleFiles.map(f => (
                     <option key={f.id} value={f.id}>
-                      {f.id}{f.description ? ` — ${f.description}` : ''}
+                      {f.sampleName || f.id}{f.description ? ` — ${f.description}` : ''}
                     </option>
                   ))}
                 </select>

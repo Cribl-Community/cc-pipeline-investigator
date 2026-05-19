@@ -239,13 +239,15 @@ async function runPreview(
     dropped: false,
     mode: "pipe",
     pipelineId: actualPipelineId,
-    sampleId: sampleId || undefined,
     level: 3,
     timeout: 10000,
     memory: 2048,
   };
-  if (!sampleId) {
+  if (sampleEvents.length > 0) {
     body.events = sampleEvents;
+  } else if (sampleId) {
+    const sampleColonIdx = sampleId.indexOf(':');
+    body.sampleId = sampleColonIdx > 0 ? sampleId.substring(sampleColonIdx + 1) : sampleId;
   }
 
   const res = await fetch(previewUrl, {
