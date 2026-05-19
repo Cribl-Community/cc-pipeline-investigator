@@ -228,13 +228,28 @@ export interface PreviewResult {
   droppedEvents: CriblEvent[];
 }
 
+function parsePreviewResponse(responseText: string): CriblEvent[] {
+  try {
+    const data = JSON.parse(responseText);
+    if (Array.isArray(data)) return data;
+    return data.items ?? data.events ?? [];
+  } catch {
+    const lines = responseText.split('\n').filter(l => l.trim());
+    const items: CriblEvent[] = [];
+    for (const line of lines) {
+      try { items.push(JSON.parse(line)); } catch { /* skip */ }
+    }
+    return items;
+  }
+}
+
 async function runPreview(
   previewUrl: string,
   actualPipelineId: string,
   sampleId: string,
   sampleEvents: CriblEvent[],
 ): Promise<CriblEvent[]> {
-  const body: Record<string, unknown> = {
+  const baseBody: Record<string, unknown> = {
     cpuProfile: false,
     dropped: false,
     mode: "pipe",
@@ -243,44 +258,55 @@ async function runPreview(
     timeout: 10000,
     memory: 2048,
   };
+
+  const actualSampleId = sampleId
+    ? (sampleId.indexOf(':') > 0 ? sampleId.substring(sampleId.indexOf(':') + 1) : sampleId)
+    : null;
+
+  // Try with sampleId first
+  if (actualSampleId) {
+    const res = await fetch(previewUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...baseBody, sampleId: actualSampleId }),
+    });
+    if (res.ok) {
+      const items = parsePreviewResponse(await res.text());
+      if (items.length > 0) return items;
+    }
+  }
+
+  // Fall back to sending events inline
   if (sampleEvents.length > 0) {
-    body.events = sampleEvents;
-  } else if (sampleId) {
-    const sampleColonIdx = sampleId.indexOf(':');
-    body.sampleId = sampleColonIdx > 0 ? sampleId.substring(sampleColonIdx + 1) : sampleId;
-  }
-
-  const res = await fetch(previewUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  const responseText = await res.text();
-  if (!res.ok) {
-    throw new Error(`Preview failed (${res.status}): ${responseText.substring(0, 200)}`);
-  }
-
-  let allItems: CriblEvent[] = [];
-  try {
-    const data = JSON.parse(responseText);
-    if (Array.isArray(data)) {
-      allItems = data;
-    } else {
-      allItems = data.items ?? data.events ?? [];
+    const res = await fetch(previewUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...baseBody, events: sampleEvents }),
+    });
+    const responseText = await res.text();
+    if (!res.ok) {
+      throw new Error(`Preview failed (${res.status}): ${responseText.substring(0, 200)}`);
     }
-  } catch {
-    const lines = responseText.split('\n').filter(l => l.trim());
-    for (const line of lines) {
-      try { allItems.push(JSON.parse(line)); } catch { /* skip */ }
+    const items = parsePreviewResponse(responseText);
+    if (items.length > 0) return items;
+
+    // Try again with just _raw strings
+    const res2 = await fetch(previewUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...baseBody, events: sampleEvents.map(e => e._raw ?? JSON.stringify(e)) }),
+    });
+    const responseText2 = await res2.text();
+    if (!res2.ok) {
+      throw new Error(`Preview failed (${res2.status}): ${responseText2.substring(0, 200)}`);
     }
+    const items2 = parsePreviewResponse(responseText2);
+    if (items2.length > 0) return items2;
+
+    return [];
   }
 
-  if (allItems.length === 0) {
-    throw new Error(`Preview returned no parseable events. Raw response: ${responseText.substring(0, 300)}`);
-  }
-
-  return allItems;
+  throw new Error('No sample data available for preview.');
 }
 
 export async function previewPipeline(
@@ -335,6 +361,7 @@ export async function previewPipelineBatch(
       });
       if (!patchRes.ok) throw new Error('Failed to save temporary pipeline config');
 
+      await new Promise(r => setTimeout(r, 200));
       const events = await runPreview(previewUrl, actualPipelineId, sampleId, sampleEvents);
       results.push({ events, droppedEvents: [] });
     }
