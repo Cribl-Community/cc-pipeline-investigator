@@ -243,71 +243,6 @@ function parsePreviewResponse(responseText: string): CriblEvent[] {
   }
 }
 
-async function runPreview(
-  previewUrl: string,
-  actualPipelineId: string,
-  sampleId: string,
-  sampleEvents: CriblEvent[],
-): Promise<CriblEvent[]> {
-  const baseBody: Record<string, unknown> = {
-    cpuProfile: false,
-    dropped: false,
-    mode: "pipe",
-    pipelineId: actualPipelineId,
-    level: 3,
-    timeout: 10000,
-    memory: 2048,
-  };
-
-  const actualSampleId = sampleId
-    ? (sampleId.indexOf(':') > 0 ? sampleId.substring(sampleId.indexOf(':') + 1) : sampleId)
-    : null;
-
-  // Try with sampleId first
-  if (actualSampleId) {
-    const res = await fetch(previewUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...baseBody, sampleId: actualSampleId }),
-    });
-    if (res.ok) {
-      const items = parsePreviewResponse(await res.text());
-      if (items.length > 0) return items;
-    }
-  }
-
-  // Fall back to sending events inline
-  if (sampleEvents.length > 0) {
-    const res = await fetch(previewUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...baseBody, events: sampleEvents }),
-    });
-    const responseText = await res.text();
-    if (!res.ok) {
-      throw new Error(`Preview failed (${res.status}): ${responseText.substring(0, 200)}`);
-    }
-    const items = parsePreviewResponse(responseText);
-    if (items.length > 0) return items;
-
-    // Try again with just _raw strings
-    const res2 = await fetch(previewUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...baseBody, events: sampleEvents.map(e => e._raw ?? JSON.stringify(e)) }),
-    });
-    const responseText2 = await res2.text();
-    if (!res2.ok) {
-      throw new Error(`Preview failed (${res2.status}): ${responseText2.substring(0, 200)}`);
-    }
-    const items2 = parsePreviewResponse(responseText2);
-    if (items2.length > 0) return items2;
-
-    return [];
-  }
-
-  throw new Error('No sample data available for preview.');
-}
 
 export async function previewPipeline(
   groupId: string,
@@ -344,6 +279,33 @@ export async function previewPipelineBatch(
   if (!fetchOk || !fetchData) throw new Error('Failed to fetch pipeline for preview');
   const existing = (fetchData as { items?: Pipeline[] }).items?.[0] ?? (fetchData as Pipeline);
 
+  // Determine the sample strategy once upfront for consistency across all steps.
+  // Strip pack prefix from sampleId since the preview URL path already scopes it.
+  const actualSampleId = sampleId
+    ? (sampleId.indexOf(':') > 0 ? sampleId.substring(sampleId.indexOf(':') + 1) : sampleId)
+    : null;
+
+  // Test if sampleId works with a quick probe (full pipeline, first step)
+  let useSampleId = false;
+  if (actualSampleId) {
+    const probeBody = {
+      cpuProfile: false, dropped: false, mode: "pipe",
+      pipelineId: actualPipelineId, sampleId: actualSampleId,
+      level: 3, timeout: 10000, memory: 2048,
+    };
+    const probeRes = await fetch(previewUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(probeBody),
+    });
+    if (probeRes.ok) {
+      const probeItems = parsePreviewResponse(await probeRes.text());
+      useSampleId = probeItems.length > 0;
+    } else {
+      await probeRes.text();
+    }
+  }
+
   const results: PreviewResult[] = [];
 
   try {
@@ -362,7 +324,28 @@ export async function previewPipelineBatch(
       if (!patchRes.ok) throw new Error('Failed to save temporary pipeline config');
 
       await new Promise(r => setTimeout(r, 200));
-      const events = await runPreview(previewUrl, actualPipelineId, sampleId, sampleEvents);
+
+      const body: Record<string, unknown> = {
+        cpuProfile: false, dropped: false, mode: "pipe",
+        pipelineId: actualPipelineId,
+        level: 3, timeout: 10000, memory: 2048,
+      };
+      if (useSampleId) {
+        body.sampleId = actualSampleId;
+      } else {
+        body.events = sampleEvents;
+      }
+
+      const res = await fetch(previewUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const responseText = await res.text();
+      if (!res.ok) {
+        throw new Error(`Preview failed (${res.status}): ${responseText.substring(0, 200)}`);
+      }
+      const events = parsePreviewResponse(responseText);
       results.push({ events, droppedEvents: [] });
     }
   } finally {

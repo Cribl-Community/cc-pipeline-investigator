@@ -51,15 +51,79 @@ function computeDiff(before: CriblEvent, after: CriblEvent, showInternal: boolea
   return lines;
 }
 
+interface MatchedEvent {
+  originalIndex: number;
+  beforeEvent: CriblEvent;
+  afterEvent: CriblEvent | null;
+}
+
+function matchEvents(before: CriblEvent[], after: CriblEvent[]): MatchedEvent[] {
+  const matched: MatchedEvent[] = [];
+  const usedAfter = new Set<number>();
+
+  for (let bi = 0; bi < before.length; bi++) {
+    const bRaw = before[bi]._raw;
+    let bestMatch = -1;
+
+    if (bRaw !== undefined) {
+      for (let ai = 0; ai < after.length; ai++) {
+        if (usedAfter.has(ai)) continue;
+        if (after[ai]._raw === bRaw) {
+          bestMatch = ai;
+          break;
+        }
+      }
+    }
+
+    if (bestMatch === -1) {
+      for (let ai = 0; ai < after.length; ai++) {
+        if (usedAfter.has(ai)) continue;
+        if (JSON.stringify(before[bi]) === JSON.stringify(after[ai]) ||
+            (bRaw !== undefined && after[ai]._raw === bRaw)) {
+          bestMatch = ai;
+          break;
+        }
+      }
+    }
+
+    // Fallback: match by position if no identity match found and index is still available
+    if (bestMatch === -1 && bi < after.length && !usedAfter.has(bi)) {
+      bestMatch = bi;
+    }
+
+    if (bestMatch >= 0) {
+      usedAfter.add(bestMatch);
+      matched.push({ originalIndex: bi, beforeEvent: before[bi], afterEvent: after[bestMatch] });
+    } else {
+      matched.push({ originalIndex: bi, beforeEvent: before[bi], afterEvent: null });
+    }
+  }
+
+  return matched;
+}
+
 export function EventDiff({ before, after, stepLabel }: Props) {
-  const [selectedEvent, setSelectedEvent] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const [showUnchanged, setShowUnchanged] = useState(false);
   const [showInternal, setShowInternal] = useState(false);
   const [viewMode, setViewMode] = useState<'diff' | 'raw'>('diff');
+  const [showDropped, setShowDropped] = useState(false);
 
-  const beforeEvent = before[selectedEvent] ?? {};
-  const afterEvent = after[selectedEvent] ?? {};
-  const diff = computeDiff(beforeEvent, afterEvent, showInternal);
+  const matched = matchEvents(before, after);
+  const survivingEvents = matched.filter(m => m.afterEvent !== null);
+  const droppedEvents = matched.filter(m => m.afterEvent === null);
+  const displayEvents = showDropped ? matched : survivingEvents;
+
+  const selected = displayEvents[selectedIdx] ?? displayEvents[0];
+  const beforeEvent = selected?.beforeEvent ?? {};
+  const afterEvent = selected?.afterEvent ?? {};
+  const isDropped = selected?.afterEvent === null;
+
+  const diff = isDropped
+    ? Object.keys(beforeEvent).filter(k => showInternal || !INTERNAL_FIELDS.has(k)).sort().map(key => ({
+        key, type: 'removed' as const, beforeValue: JSON.stringify(beforeEvent[key]), afterValue: undefined,
+      }))
+    : computeDiff(beforeEvent, afterEvent, showInternal);
 
   const changedCount = diff.filter(d => d.type !== 'unchanged').length;
   const visibleDiff = showUnchanged ? diff : diff.filter(d => d.type !== 'unchanged');
@@ -69,16 +133,28 @@ export function EventDiff({ before, after, stepLabel }: Props) {
       <div className="diff-header">
         <h3>{stepLabel}</h3>
         <div className="diff-controls">
-          {after.length > 1 && (
+          {displayEvents.length > 1 && (
             <select
-              value={selectedEvent}
-              onChange={e => setSelectedEvent(Number(e.target.value))}
+              value={selectedIdx}
+              onChange={e => setSelectedIdx(Number(e.target.value))}
               className="event-select"
             >
-              {after.map((_, i) => (
-                <option key={i} value={i}>Event {i + 1}</option>
+              {displayEvents.map((m, i) => (
+                <option key={i} value={i}>
+                  Event {m.originalIndex + 1}{m.afterEvent === null ? ' (dropped)' : ''}
+                </option>
               ))}
             </select>
+          )}
+          {droppedEvents.length > 0 && (
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={showDropped}
+                onChange={e => { setShowDropped(e.target.checked); setSelectedIdx(0); }}
+              />
+              Show dropped ({droppedEvents.length})
+            </label>
           )}
           <label className="toggle-label">
             <input
@@ -112,7 +188,9 @@ export function EventDiff({ before, after, stepLabel }: Props) {
           </div>
         </div>
         <div className="diff-summary">
-          {changedCount === 0 ? (
+          {isDropped ? (
+            <span className="status-dropped">Event {selected.originalIndex + 1} was dropped</span>
+          ) : changedCount === 0 ? (
             <span className="no-changes">No changes in this step</span>
           ) : (
             <span>{changedCount} field{changedCount !== 1 ? 's' : ''} changed</span>
@@ -154,8 +232,8 @@ export function EventDiff({ before, after, stepLabel }: Props) {
             <pre>{JSON.stringify(filterEvent(beforeEvent, showInternal), null, 2)}</pre>
           </div>
           <div className="raw-panel">
-            <h4>After</h4>
-            <pre>{JSON.stringify(filterEvent(afterEvent, showInternal), null, 2)}</pre>
+            <h4>{isDropped ? 'After (dropped)' : 'After'}</h4>
+            <pre>{isDropped ? '— event dropped —' : JSON.stringify(filterEvent(afterEvent, showInternal), null, 2)}</pre>
           </div>
         </div>
       )}
