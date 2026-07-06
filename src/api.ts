@@ -223,9 +223,12 @@ export async function savePipeline(
   if (!saveRes.ok) throw new Error('Failed to save pipeline');
 }
 
+export const TRACKING_FIELD = '__pi_idx';
+
 export interface PreviewResult {
   events: CriblEvent[];
   droppedEvents: CriblEvent[];
+  originalIndices: number[];
 }
 
 function parsePreviewResponse(responseText: string): CriblEvent[] {
@@ -259,7 +262,7 @@ export async function previewPipeline(
 export async function previewPipelineBatch(
   groupId: string,
   pipelineId: string,
-  sampleId: string,
+  _sampleId: string,
   sampleEvents: CriblEvent[],
   allFunctions: PipelineFunction[],
   stepIndices: number[]
@@ -279,32 +282,9 @@ export async function previewPipelineBatch(
   if (!fetchOk || !fetchData) throw new Error('Failed to fetch pipeline for preview');
   const existing = (fetchData as { items?: Pipeline[] }).items?.[0] ?? (fetchData as Pipeline);
 
-  // Determine the sample strategy once upfront for consistency across all steps.
-  // Strip pack prefix from sampleId since the preview URL path already scopes it.
-  const actualSampleId = sampleId
-    ? (sampleId.indexOf(':') > 0 ? sampleId.substring(sampleId.indexOf(':') + 1) : sampleId)
-    : null;
-
-  // Test if sampleId works with a quick probe (full pipeline, first step)
-  let useSampleId = false;
-  if (actualSampleId) {
-    const probeBody = {
-      cpuProfile: false, dropped: false, mode: "pipe",
-      pipelineId: actualPipelineId, sampleId: actualSampleId,
-      level: 3, timeout: 10000, memory: 2048,
-    };
-    const probeRes = await fetch(previewUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(probeBody),
-    });
-    if (probeRes.ok) {
-      const probeItems = parsePreviewResponse(await probeRes.text());
-      useSampleId = probeItems.length > 0;
-    } else {
-      await probeRes.text();
-    }
-  }
+  // Tag each event with its original index so we can track drops through the pipeline.
+  // Always use inline events so we control the tracking field.
+  const taggedEvents = sampleEvents.map((e, i) => ({ ...e, [TRACKING_FIELD]: i }));
 
   const results: PreviewResult[] = [];
 
@@ -325,16 +305,12 @@ export async function previewPipelineBatch(
 
       await new Promise(r => setTimeout(r, 200));
 
-      const body: Record<string, unknown> = {
+      const body = {
         cpuProfile: false, dropped: false, mode: "pipe",
         pipelineId: actualPipelineId,
         level: 3, timeout: 10000, memory: 2048,
+        events: taggedEvents,
       };
-      if (useSampleId) {
-        body.sampleId = actualSampleId;
-      } else {
-        body.events = sampleEvents;
-      }
 
       const res = await fetch(previewUrl, {
         method: 'POST',
@@ -346,7 +322,11 @@ export async function previewPipelineBatch(
         throw new Error(`Preview failed (${res.status}): ${responseText.substring(0, 200)}`);
       }
       const events = parsePreviewResponse(responseText);
-      results.push({ events, droppedEvents: [] });
+      const originalIndices = events.map(e => {
+        const idx = e[TRACKING_FIELD];
+        return typeof idx === 'number' ? idx : -1;
+      });
+      results.push({ events, droppedEvents: [], originalIndices });
     }
   } finally {
     const restorePipeline = { ...existing, conf: { ...existing.conf, functions: allFunctions } };

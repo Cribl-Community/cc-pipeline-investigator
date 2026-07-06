@@ -35,7 +35,7 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
       const stepIndices = activeFunctions.map((_, i) => activeToAllIdx[i]);
       const batchResults = await previewPipelineBatch(groupId, pipeline.id, sampleId, sampleEvents, editedFunctions, stepIndices);
       const results: StepResult[] = batchResults.map((r, i) => ({
-        stepIndex: i, events: r.events, droppedEvents: r.droppedEvents,
+        stepIndex: i, events: r.events, droppedEvents: r.droppedEvents, originalIndices: r.originalIndices,
       }));
       setStepResults(results);
       setCurrentStep(0);
@@ -58,13 +58,13 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
       const result = await previewPipeline(groupId, pipeline.id, sampleId, sampleEvents, editedFunctions, allIdx);
       setStepResults(prev => {
         const updated = [...prev];
-        updated[currentStep] = { stepIndex: currentStep, events: result.events, droppedEvents: result.droppedEvents };
+        updated[currentStep] = { stepIndex: currentStep, events: result.events, droppedEvents: result.droppedEvents, originalIndices: result.originalIndices };
         return updated;
       });
     } catch (err) {
       setStepResults(prev => {
         const updated = [...prev];
-        updated[currentStep] = { stepIndex: currentStep, events: [], droppedEvents: [], error: String(err) };
+        updated[currentStep] = { stepIndex: currentStep, events: [], droppedEvents: [], originalIndices: [], error: String(err) };
         return updated;
       });
     }
@@ -362,6 +362,7 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
                 <EventDiff
                   before={getPreviousEvents()}
                   after={getCurrentEvents()}
+                  originalIndices={currentResult.originalIndices}
                   stepLabel={`After: ${getFunctionLabel(activeFunctions[currentStep])}`}
                 />
               )}

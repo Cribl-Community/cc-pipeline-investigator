@@ -51,5 +51,6 @@ export interface StepResult {
   stepIndex: number;
   events: CriblEvent[];
   droppedEvents: CriblEvent[];
+  originalIndices: number[];
   error?: string;
 }

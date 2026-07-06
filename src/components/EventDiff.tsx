@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import type { CriblEvent } from '../types';
+import { TRACKING_FIELD } from '../api';
 
 interface Props {
   before: CriblEvent[];
   after: CriblEvent[];
+  originalIndices: number[];
   stepLabel: string;
 }
 
@@ -17,6 +19,7 @@ type DiffLine = {
 const INTERNAL_FIELDS = new Set([
   '__cloneCount', '__criblEventType', '__ctrlFields', '__final',
   '__id', '__dropped', '__inputId', '__outputId', 'cribl_pipe',
+  TRACKING_FIELD,
 ]);
 
 function filterEvent(event: CriblEvent, showInternal: boolean): CriblEvent {
@@ -57,59 +60,35 @@ interface MatchedEvent {
   afterEvent: CriblEvent | null;
 }
 
-function matchEvents(before: CriblEvent[], after: CriblEvent[]): MatchedEvent[] {
-  const matched: MatchedEvent[] = [];
-  const usedAfter = new Set<number>();
-
-  for (let bi = 0; bi < before.length; bi++) {
-    const bRaw = before[bi]._raw;
-    let bestMatch = -1;
-
-    if (bRaw !== undefined) {
-      for (let ai = 0; ai < after.length; ai++) {
-        if (usedAfter.has(ai)) continue;
-        if (after[ai]._raw === bRaw) {
-          bestMatch = ai;
-          break;
-        }
-      }
-    }
-
-    if (bestMatch === -1) {
-      for (let ai = 0; ai < after.length; ai++) {
-        if (usedAfter.has(ai)) continue;
-        if (JSON.stringify(before[bi]) === JSON.stringify(after[ai]) ||
-            (bRaw !== undefined && after[ai]._raw === bRaw)) {
-          bestMatch = ai;
-          break;
-        }
-      }
-    }
-
-    // Fallback: match by position if no identity match found and index is still available
-    if (bestMatch === -1 && bi < after.length && !usedAfter.has(bi)) {
-      bestMatch = bi;
-    }
-
-    if (bestMatch >= 0) {
-      usedAfter.add(bestMatch);
-      matched.push({ originalIndex: bi, beforeEvent: before[bi], afterEvent: after[bestMatch] });
-    } else {
-      matched.push({ originalIndex: bi, beforeEvent: before[bi], afterEvent: null });
+function buildMatchedEvents(before: CriblEvent[], after: CriblEvent[], originalIndices: number[]): MatchedEvent[] {
+  const afterByOriginalIdx = new Map<number, CriblEvent>();
+  for (let i = 0; i < after.length; i++) {
+    const idx = originalIndices[i] ?? -1;
+    if (idx >= 0) {
+      afterByOriginalIdx.set(idx, after[i]);
     }
   }
 
-  return matched;
+  return before.map((beforeEvent, i) => {
+    const origIdx = typeof beforeEvent[TRACKING_FIELD] === 'number'
+      ? beforeEvent[TRACKING_FIELD] as number
+      : i;
+    return {
+      originalIndex: origIdx,
+      beforeEvent,
+      afterEvent: afterByOriginalIdx.get(origIdx) ?? null,
+    };
+  });
 }
 
-export function EventDiff({ before, after, stepLabel }: Props) {
+export function EventDiff({ before, after, originalIndices, stepLabel }: Props) {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [showUnchanged, setShowUnchanged] = useState(false);
   const [showInternal, setShowInternal] = useState(false);
   const [viewMode, setViewMode] = useState<'diff' | 'raw'>('diff');
   const [showDropped, setShowDropped] = useState(false);
 
-  const matched = matchEvents(before, after);
+  const matched = buildMatchedEvents(before, after, originalIndices);
   const survivingEvents = matched.filter(m => m.afterEvent !== null);
   const droppedEvents = matched.filter(m => m.afterEvent === null);
   const displayEvents = showDropped ? matched : survivingEvents;
