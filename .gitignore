@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Cribl Git-install pack layout (materialized onto release tags by CI)
+static/
+default/
+
+# Editor / OS
+.DS_Store
+*.log
