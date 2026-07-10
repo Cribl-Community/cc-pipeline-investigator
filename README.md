@@ -37,65 +37,14 @@ Because Cribl's preview endpoint ignores an inline `pipelineConf` when a `pipeli
 
 ## Development
 
+Clone this repo. Install dependencies and start the app.
 ```bash
 npm install
-npm run dev        # Vite dev server with HMR
-npm run lint       # ESLint
-npm run build      # tsc -b && vite build → dist/
+npm run dev 
 ```
 
-The app expects the Cribl API at `/api/v1` by default. Override it by setting `window.CRIBL_API_URL` (see [src/api.ts](src/api.ts)).
-
-## Releasing
-
-Releases are cut from Git tags via GitHub Actions ([.github/workflows/release.yml](.github/workflows/release.yml)). Pushing a tag matching `v*` runs `npm ci`, lints, packages the app at the tag's version (the leading `v` is stripped, so `v1.0.0` → `1.0.0`), materializes the Cribl pack layout (`static/` + `default/`) onto the tag, moves a rolling `latest` tag, and publishes a GitHub Release with the built `.tgz` attached.
-
-You do **not** need to bump the version in `package.json` — the workflow stamps it from the tag name at build time.
-
-Cut a release from a clean `main`:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Then watch the run or open the release page:
-
-```bash
-gh run watch
-gh release view v1.0.0 --web
-```
-
-Sanity-check locally before tagging (discard any local `package.json` version bump afterward — only the tagged commit matters to CI):
-
-```bash
-npm ci && npm run lint && npm run package -- --version 1.0.0
-ls build/*.tgz
-```
-
-To retag, delete the bad tag locally and on the remote first:
-
-```bash
-git tag -d v1.0.0
-git push origin :refs/tags/v1.0.0
-```
-
-### Packaging locally
-
-To build a `.tgz` bundle without cutting a release:
-
-```bash
-npm run package                 # build + patch version bump → build/<name>-<version>.tgz
-npm run package -- --minor      # 1.0.7 → 1.1.0
-npm run package -- --major      # 1.0.7 → 2.0.0
-npm run package -- --version 1.2.3
-```
-
-This runs `npm run build`, bumps the version in `package.json`, and writes the tarball to `build/cc-pipeline-investigation-<version>.tgz`. See [scripts/package.mjs](scripts/package.mjs).
-
-## Tech stack
-
-React 19 + TypeScript, built with Vite. Packaged as a Cribl Stream app (`cribl.type: "app"` in [package.json](package.json)).
+Log into Cribl Cloud
+Go to App Platform > Development > Live Preview
 
 ## License
 
