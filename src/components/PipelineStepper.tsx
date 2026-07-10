@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { Pipeline, PipelineFunction, CriblEvent, StepResult } from '../types';
 import { previewPipeline, previewPipelineBatch, savePipeline } from '../api';
 import { EventDiff } from './EventDiff';
@@ -21,11 +21,17 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
   const [editedFunctions, setEditedFunctions] = useState<PipelineFunction[]>(pipeline.conf.functions);
   const [showSamplePicker, setShowSamplePicker] = useState(false);
 
-  const activeFunctions = editedFunctions.filter(f => !f.disabled);
+  const activeFunctions = useMemo(
+    () => editedFunctions.filter(f => !f.disabled),
+    [editedFunctions]
+  );
 
   // Map active function index to the index in editedFunctions (all)
-  const activeToAllIdx: number[] = [];
-  editedFunctions.forEach((fn, i) => { if (!fn.disabled) activeToAllIdx.push(i); });
+  const activeToAllIdx = useMemo(() => {
+    const idx: number[] = [];
+    editedFunctions.forEach((fn, i) => { if (!fn.disabled) idx.push(i); });
+    return idx;
+  }, [editedFunctions]);
 
   const runAllSteps = useCallback(async () => {
     setLoading(true);

@@ -17,6 +17,8 @@ export function PipelineSelector({ onPipelineSelected }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch-on-mount: the synchronous setState is an intentional loading flag.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingGroups(true);
     fetchWorkerGroups()
       .then(g => {
@@ -29,6 +31,9 @@ export function PipelineSelector({ onPipelineSelected }: Props) {
 
   useEffect(() => {
     if (!selectedGroup) return;
+    // Refetch when the selected group changes; the setState calls reset the
+    // dependent UI (loading flag + cleared lists) before the async fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingPipelines(true);
     setPipelines([]);
     setSelectedPipeline('');

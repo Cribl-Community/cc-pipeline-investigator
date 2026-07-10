@@ -29,6 +29,9 @@ export function SampleInput({ groupId, onSampleReady }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Fetch sample files when the group changes; the synchronous setState is
+    // an intentional loading flag ahead of the async fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetchSampleFiles(groupId)
       .then(files => {
