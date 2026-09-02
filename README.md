@@ -4,10 +4,12 @@ A Cribl Stream app for **stepping through a pipeline one function at a time** to
 
 ## Installation
 
-1. Log in to Cribl and then click on **Apps->View All**
-2. Click **Add App->Import from Git**.
-3. Paste the repo url and "latest" for the release tag.
-4. Click **Import**.
+Install directly from the Cribl Marketplace (Organization administrators only):
+
+1. Log in to Cribl and click **Apps** in the top navigation.
+2. Open the **Cribl Marketplace** catalog and find **Pipeline Investigator**.
+3. Review the app's **Overview**, **Permissions**, and **External API Access**, then click **Install**.
+4. Complete any pre-install checks Cribl prompts you with.
 
 ## What it does
 
@@ -45,6 +47,12 @@ npm run dev
 
 Log into Cribl Cloud
 Go to App Platform > Development > Live Preview
+
+## Release Versions
+
+| Version | Changes |
+| --- | --- |
+| 1.0.12 | Install via the Cribl Marketplace (replaces Import from Git); lowercased package name and repository URL. |
 
 ## License
 

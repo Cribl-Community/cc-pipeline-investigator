@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Pipeline, CriblEvent } from './types';
 import { PipelineSelector } from './components/PipelineSelector';
 import { SampleInput, type SampleSelection } from './components/SampleInput';
-import { PipelineStepper } from './components/PipelineStepper';
+import { PipelineInvestigator } from './components/PipelineInvestigator';
 
 function App() {
   const [pipeline, setPipeline] = useState<Pipeline | null>(null);
@@ -30,7 +30,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Pipeline Stepper</h1>
+        <h1>Pipeline Investigator</h1>
         {pipeline && (
           <button className="btn btn-secondary" onClick={handleReset}>
             Change Pipeline
@@ -48,7 +48,7 @@ function App() {
         )}
 
         {pipeline && sampleEvents.length > 0 && (
-          <PipelineStepper
+          <PipelineInvestigator
             pipeline={pipeline}
             groupId={groupId}
             sampleId={sampleId}

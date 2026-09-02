@@ -235,14 +235,14 @@ body {
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
-/* Stepper */
-.stepper-container {
+/* Investigator */
+.investigator-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.stepper-header {
+.investigator-header {
   background: #fff;
   padding: 20px 24px;
   border-radius: 8px;
@@ -259,7 +259,7 @@ body {
   margin-left: auto;
 }
 
-.stepper-header h2 {
+.investigator-header h2 {
   font-size: 16px;
   font-weight: 600;
 }
@@ -270,7 +270,7 @@ body {
   flex: 1;
 }
 
-.stepper-body {
+.investigator-body {
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 16px;
@@ -975,7 +975,7 @@ body {
 
 /* Responsive */
 @media (max-width: 900px) {
-  .stepper-body {
+  .investigator-body {
     grid-template-columns: 1fr;
   }
 

@@ -1,7 +1,7 @@
 {
-  "name": "CC-pipeline-investigator",
+  "name": "cc-pipeline-investigator",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -35,7 +35,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Cribl-Community/CC-pipeline-investigator.git"
+    "url": "git+https://github.com/Cribl-Community/cc-pipeline-investigator.git"
   },
   "cribl": {
     "type": "app",

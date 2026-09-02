@@ -159,7 +159,7 @@ export async function fetchSampleContent(groupId: string, sampleId: string): Pro
 }
 
 export async function uploadTempSample(groupId: string, events: CriblEvent[]): Promise<string> {
-  const sampleId = `__pipeline_stepper_temp_${Date.now()}`;
+  const sampleId = `__pipeline_investigator_temp_${Date.now()}`;
   const ndjson = events.map(e => JSON.stringify(e)).join('\n');
 
   const endpoints = [
@@ -185,7 +185,7 @@ export async function uploadTempSample(groupId: string, events: CriblEvent[]): P
 }
 
 export async function deleteTempSample(groupId: string, sampleId: string): Promise<void> {
-  if (!sampleId.startsWith('__pipeline_stepper_temp_')) return;
+  if (!sampleId.startsWith('__pipeline_investigator_temp_')) return;
   const endpoints = [
     `${getApiUrl()}/m/${groupId}/samples/${sampleId}`,
     `${getApiUrl()}/m/${groupId}/lib/datagen/${sampleId}`,

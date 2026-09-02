@@ -13,7 +13,7 @@ interface Props {
   onSampleChange: (selection: SampleSelection) => void;
 }
 
-export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onSampleChange }: Props) {
+export function PipelineInvestigator({ pipeline, groupId, sampleId, sampleEvents, onSampleChange }: Props) {
   const [currentStep, setCurrentStep] = useState(-1);
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -164,8 +164,8 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
   const hasEdits = JSON.stringify(editedFunctions) !== JSON.stringify(pipeline.conf.functions);
 
   return (
-    <div className="stepper-container">
-      <div className="stepper-header">
+    <div className="investigator-container">
+      <div className="investigator-header">
         <h2>Pipeline: {pipeline.id}</h2>
         {pipeline.conf.description && (
           <p className="pipeline-description">{pipeline.conf.description}</p>
@@ -218,7 +218,7 @@ export function PipelineStepper({ pipeline, groupId, sampleId, sampleEvents, onS
 
       {error && <div className="error-banner">{error}</div>}
 
-      <div className="stepper-body">
+      <div className="investigator-body">
         <div className="function-list">
           <div
             className={`function-item ${currentStep === -1 ? 'active' : ''}`}
