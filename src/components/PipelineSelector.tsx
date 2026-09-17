@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Pipeline, WorkerGroup } from '../types';
 import { fetchWorkerGroups, fetchPipelines, fetchPipeline } from '../api';
 
@@ -16,10 +16,9 @@ export function PipelineSelector({ onPipelineSelected }: Props) {
   const [loadingSelect, setLoadingSelect] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Fetch-on-mount: the synchronous setState is an intentional loading flag.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  const loadGroups = useCallback(() => {
     setLoadingGroups(true);
+    setError(null);
     fetchWorkerGroups()
       .then(g => {
         setGroups(g);
@@ -28,6 +27,14 @@ export function PipelineSelector({ onPipelineSelected }: Props) {
       .catch(err => setError(String(err)))
       .finally(() => setLoadingGroups(false));
   }, []);
+
+  useEffect(() => {
+    // Fetch-on-mount. On the very first load inside Cribl Live Preview the API
+    // base URL / auth may not be injected yet, so this can fail transiently;
+    // the error state exposes a Retry button (loadGroups) to recover.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadGroups();
+  }, [loadGroups]);
 
   useEffect(() => {
     if (!selectedGroup) return;
@@ -64,7 +71,18 @@ export function PipelineSelector({ onPipelineSelected }: Props) {
   return (
     <div className="pipeline-selector">
       <h3>Select Pipeline</h3>
-      {error && <div className="error-text">{error}</div>}
+      {error && (
+        <div className="selector-error">
+          <span className="error-text">{error}</span>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={loadGroups}
+            disabled={loadingGroups}
+          >
+            {loadingGroups ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
+      )}
       <div className="selector-row">
         <label>
           Worker Group

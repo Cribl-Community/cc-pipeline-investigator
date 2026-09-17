@@ -54,3 +54,28 @@ export interface StepResult {
   originalIndices: number[];
   error?: string;
 }
+
+// --- Optimize mode ---
+
+export type Severity = 'high' | 'medium' | 'low' | 'info';
+
+export type Category = 'Ordering' | 'Performance' | 'Maintainability' | 'Correctness';
+
+export interface Finding {
+  ruleId: string;
+  title: string;
+  severity: Severity;
+  category: Category;
+  detail: string; // what was found
+  recommendation: string; // what to do about it
+  // Functions this finding points at, for UI highlighting.
+  functions: { index: number; label: string }[];
+}
+
+export interface AnalysisReport {
+  pipelineId: string;
+  score: number; // 0-100 efficiency score
+  totalFunctions: number;
+  enabledFunctions: number;
+  findings: Finding[];
+}

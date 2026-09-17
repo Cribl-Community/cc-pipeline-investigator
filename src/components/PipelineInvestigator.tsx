@@ -216,6 +216,16 @@ export function PipelineInvestigator({ pipeline, groupId, sampleId, sampleEvents
         <SampleInput groupId={groupId} onSampleReady={handleSampleReady} />
       )}
 
+      {loading && (
+        <div className="processing-banner" role="status" aria-live="polite">
+          <span className="processing-spinner" aria-hidden="true" />
+          <span>
+            Please be patient — we're processing your pipeline against the sample events. This can
+            take a moment for larger pipelines or samples.
+          </span>
+        </div>
+      )}
+
       {error && <div className="error-banner">{error}</div>}
 
       <div className="investigator-body">
