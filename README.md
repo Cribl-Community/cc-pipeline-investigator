@@ -67,8 +67,8 @@ Go to App Platform > Development > Live Preview
 
 | Version | Changes |
 | --- | --- |
-| 1.1 | Added **Optimize** mode: scored best-practice findings, a safe behavior-preserving rewrite with side-by-side diff, live field-for-field verification, and JSON export (suffixed `_new` so it won't overwrite the original). **Code** functions can generate a **draft** built-in replacement (Parser / Eval / Rename / Mask / Regex Extract), verified before use. |
-| 1.0 | Initial release — **Investigate** mode: step through a pipeline function by function with a field-level before/after diff and dropped-event tracking, plus live function editing. |
+| 1.1.0 | Added **Optimize** mode: scored best-practice findings, a safe behavior-preserving rewrite with side-by-side diff, live field-for-field verification, and JSON export (suffixed `_new` so it won't overwrite the original). **Code** functions can generate a **draft** built-in replacement (Parser / Eval / Rename / Mask / Regex Extract), verified before use. |
+| 1.0.0 | Initial release — **Investigate** mode: step through a pipeline function by function with a field-level before/after diff and dropped-event tracking, plus live function editing. |
 
 ## License
 
